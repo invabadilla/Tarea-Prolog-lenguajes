@@ -1,0 +1,1 @@
+run():- read(X), split_string(X," ","",S), C is S ,write(S), append(C, ["00:00"], S), write(S).
