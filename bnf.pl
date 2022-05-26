@@ -1,13 +1,17 @@
+run():- dataBase(DB), write(DB), runaux([], 0, DB).
+dataBase(DB):- append([], [[]], D0), append(D0, [[]], D1), append(D1, [[]], D2), append(D2, [[]], DB).
+runaux(C, Emer, DB):- read(X),split_string(X," ","",S), bnf(S,[], DB), append(C, S, Conv),identificarPC(Conv, Emer, DB).
 
-run(C):- read(X),split_string(X," ","",S), bnf(S,[]), append(C, S, Conv),identificarPC(Conv).
-
-run(C):- fraseSiNoEntendio(C).
+runaux(C, Emer, DB):- fraseSiNoEntendio(C, Emer, DB).
 
 
 %bnf
-bnf(S0,S):- S0 = ["EXIT"], abort.
-bnf(S0,S):- oracion(S0, S).
-bnf(S0,S):- oracion(S0, S1), bnf(S1, S).
+bnf(S0,_, _):- S0 = ["EXIT"], abort.
+bnf(S0,_, DB):- S0 = ["MuchasGracias"], write("De nada \n"), runaux([], 0, DB).
+bnf(S0,_, DB):- S0 = ["CambioYFuera"], runaux([], 0, DB).
+bnf(S0,_, DB):- S0 = ["Gracias"], write("De nada \n"), runaux([], 0, DB).
+bnf(S0,S, _):- oracion(S0, S).
+bnf(S0,S, DB):- oracion(S0, S1), bnf(S1, S, DB).
 
 %Sintagmas de las oraciones
 oracion(S0,S):- sintagma_nominal(S0,S1),sintagma_verbal(S1,S).
@@ -20,14 +24,13 @@ oracion(S0,S):- sintagma_identificacion(S0,S).
 oracion(S0,S):- nombreA(S0, S).
 oracion(S0,S):- hora(S0, S).
 oracion(S0,S):- sintagma_caracteristica(S0, S).
-oracion(S0,S):- agradecimiento(S0, S).
-oracion(S0,S):- despedida(S0, S).
 oracion(S0,S):- emergencia(S0, S).
 
 
 
 %Sintagma nomminal
 sintagma_nominal(S0,S):- determinante(S0,S1),nombreA(S1,S).
+sintagma_nominal(S0,S):- determinante(S0,S1),sustantivo(S1,S).
 sintagma_nominal(S0,S):- sustantivo(S0,S).
 
 %Sintagma verbal
@@ -55,12 +58,6 @@ caracteristica(S0, S):- direccion(S0, S1), cardinal(S1,S).
 caracteristica(S0, S):- velocidad(S0, S1), rapidez(S1, S).
 caracteristica(S0, S):- distancia(S0, S1), kilometros(S1, S).
 
-
-%Agradecimientos
-agradecimiento(["Gracias"|S],S).
-agradecimiento(["MuchasGracias"|S],S).
-%Finalizar conversacion (Despedida)
-despedida(["CambioYFuera"|S],S).
 
 %Numero de vuelo
 vuelo(["Vuelo:"|S],S).
@@ -259,34 +256,33 @@ tiempo(["tardes"|S],S).
 tiempo(["noches"|S],S).
 
 %Elije una frase por si lo escrito por el ususario no se llega a comprender
-fraseSiNoEntendio(C):- random(0, 4, R), nth0(R,
+fraseSiNoEntendio(C, Emer, DB):- random(0, 4, R), nth0(R,
                        ["Disculpe, pordria repetir lo que dijo. \n",
                        "No se le pudo comprender, por favor repitase. \n",
                        "Estamos teniendo problemas con la senal de radio, repita lo dicho. \n",
                        "Comuniquese nuevamente, no se le logro entender. \n"], Phrase) ,
-                       write(Phrase), run(C).
+                       write(Phrase), runaux(C,Emer, DB).
 
-identificarPC(S):- identificarSaludo(S, Conv), responderSaludo(P), write(P), run(Conv).
-identificarPC(S):- identificarEmergencia(S, Conv), write("Buenas, indique cual es su emergencia"), run(Conv).
+identificarPC(S, Emer, DB):- identificarSaludo(S, Conv), responderSaludo(P), write(P), runaux(Conv, Emer, DB).
+identificarPC(S, _, DB):- identificarEmergencia(S, Conv), write("Buenas, indique cual es su emergencia \n"), runaux(Conv, 1, DB).
 
-%identificarPC(S):- identificarSolicitud(Soli) ,identificarVuelo(), identificarAereolinea(),
- %                      identificarMatricula(), identificarAereonave(), identificarHora(S, Soli, Conv),
-                        %identificarDireccion(Conv),
-  %                     Soli = "despegar",identificarAgradecimiento() ,identificarDespedida().
+identificarPC(S, Emer, DB):- identificarSolicitud(S, Soli, Emer) ,identificarVuelo(S), identificarAerolinea(S),
+                        identificarMatricula(S), identificarAeronave(S), identificarHora(S, Soli, Emer, DB),
+                        identificarVelocidad(S, Soli, Emer, DB), identificarDistancia(S, Soli, Emer, DB),
+                        identificarDireccion(S, Emer), agendarEspacio(S, Emer, DB).
 
-%identificarPC(S):- identificarSolicitud(Soli) ,identificarVuelo(), identificarAereolinea(),
- %                      identificarMatricula(), identificarAereonave(), identificarHora(), Soli = "aterrizar",
-  %                     identificarVelocidad(), identificarDistancia() ,identificarDireccion().
 
-identificarPC(S):- not(identificarSolicitud(S, Soli)), pedirSolicitud(P), write(P), run(S).
-identificarPC(S):- not(identificarVuelo(S)), pedirIdentificacion(P), write(P), run(S).
-identificarPC(S):- not(identificarAerolinea(S)), pedirIdentificacion(P), write(P), run(S).
-identificarPC(S):- not(identificarMatricula(S)), pedirIdentificacion(P), write(P), run(S).
-identificarPC(S):- not(identificarAeronave(S)), pedirAeronave(P), write(P), run(S).
-identificarPC(S):- not(identificarHora(S, 0, [])), pedirHora(P), write(P), run(S).
-identificarPC(S):- not(identificarVelocidad(S, 0, [])), pedirVelocidad(P), write(P), run(S).
-identificarPC(S):- not(identificarDistancia(S, 0, [])), pedirDistancia(P), write(P), run(S).
-identificarPC(S):- not(identificarDireccion(S)), pedirDireccion(P), write(P), run(S).
+
+identificarPC(S, Emer, DB):- not(identificarSolicitud(S, _, Emer)), pedirSolicitud(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarVuelo(S)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarAerolinea(S)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarMatricula(S)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarAeronave(S)), pedirAeronave(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarHora(S, 0, Emer, DB)), pedirHora(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarVelocidad(S, 0, Emer, DB)), pedirVelocidad(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarDistancia(S, 0, Emer, DB)), pedirDistancia(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarDireccion(S, Emer)), pedirDireccion(P), write(P), runaux(S, Emer, DB).
+
 
 
 
@@ -313,8 +309,9 @@ responderSaludo(P):- random(0, 2, R), nth0(R,
 
 identificarEmergencia(S, Conv):- miembro("Mayday-Mayday", S), my_remove_element("Mayday-Mayday", S, Conv).
 
-identificarSolicitud(S, Soli):- miembro("despegar", S), Soli is 1.
-identificarSolicitud(S, Soli):- miembro("aterrizar", S), Soli is 2.
+identificarSolicitud(_, Soli, Emer):- Emer = 1, Soli is 2.
+identificarSolicitud(S, Soli, _):- miembro("despegar", S), Soli is 1.
+identificarSolicitud(S, Soli, _):- miembro("aterrizar", S), Soli is 2.
 
 pedirSolicitud(P):-random(0, 1, R), nth0(R,
                                            ["Por favor indiqueme en que le puedo ayudar primero, aterrizaje o despegue \n",
@@ -334,8 +331,9 @@ pedirAeronave(P):-random(0, 1, R), nth0(R,
                                        ["Me indica el tipo de aeronave \n",
                                        "Que tipo de aeronave es? \n"], P).
 
-identificarHora(S, Soli, Conv):- Soli = 2, append(S, ["00:00"], Conv).
-identificarHora(S, Soli, Conv):- miembro("00:00", S); miembro("01:00",S); miembro("01:30",S); miembro("02:00",S);
+identificarHora(_, _, Emer, _):- Emer = 1.
+identificarHora(S, Soli, Emer, DB):- Soli = 2, append(S, ["00:00"], Conv), not(identificarVelocidad(Conv, 0, Emer, DB)), pedirVelocidad(P), write(P), runaux(Conv, Emer, DB).
+identificarHora(S, _, _, _):- miembro("00:00", S); miembro("01:00",S); miembro("01:30",S); miembro("02:00",S);
 miembro("02:30",S); miembro("03:00",S); miembro("03:30",S); miembro("04:00",S); miembro("04:30",S);
 miembro("05:00",S); miembro("05:30",S); miembro("06:00",S); miembro("06:30",S); miembro("07:00",S);
 miembro("07:30",S); miembro("08:00",S); miembro("08:30",S); miembro("09:00",S); miembro("09:30",S);
@@ -350,22 +348,26 @@ pedirHora(P):-random(0, 1, R), nth0(R,
                                        ["Indique la hora de salida \n",
                                        "A que hora desea despegar? \n"], P).
 
-
-identificarVelocidad(S, Soli, Conv):- Soli = 1, append(S, ["velocidad:"], Conv).
-identificarVelocidad(S, Soli, Conv):- miembro("velocidad:", S).
+identificarVelocidad(_, _, Emer, _):- Emer = 1.
+identificarVelocidad(S, Soli, Emer, DB):- Soli = 1, append(S, ["distancia:", "velocidad:"], Conv), not(identificarDireccion(S, Emer)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
+identificarVelocidad(S, _, _, _):- miembro("velocidad:", S).
 
 pedirVelocidad(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su velocidad, distancia a la pista y direccion\n",
                                        "Hagame saber sus caracteristicas fisicas de movimiento \n"], P).
 
-identificarDistancia(S, Soli, Conv):- Soli = 1, append(S, ["distancia:"], Conv).
-identificarDistancia(S, Soli, Conv):- miembro("distancia:", S).
+identificarDistancia(_, _, Emer, _):- Emer = 1.
+identificarDistancia(S, Soli, Emer, DB):- Soli = 1,append(S, ["distancia:", "velocidad"], Conv), not(identificarDireccion(S, Emer)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
+identificarDistancia(S, _, _, _):- miembro("distancia:", S).
 
 pedirDistancia(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su velocidad, distancia a la pista y direccion\n",
                                        "Hagame saber sus caracteristicas fisicas de movimiento \n"], P).
 
-identificarDireccion(S):- miembro("direccion:", S).
+identificarDireccion(_, Emer):- Emer = 1.
+identificarDireccion(S, _):- miembro("direccion:", S).
 pedirDireccion(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su direccion\n",
                                        "Hagame saber su direccion\n"], P).
+
+agendarEspacio(S, Emer, DB):- write("Su espacio ha sido asignado \n"), runaux(S, Emer, DB).
