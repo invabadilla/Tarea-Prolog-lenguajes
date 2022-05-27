@@ -345,7 +345,7 @@ pedirAeronave(P):-random(0, 1, R), nth0(R,
 
 identificarHora(_, _, Emer, _, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0"], SpecsD).
 identificarHora(S, Soli, Emer, DB,_,_):- Soli = 2, append(S, ["00:01"], Conv), not(identificarVelocidad(Conv, 0, Emer, DB, [], _)), pedirVelocidad(P), write(P), runaux(Conv, Emer, DB).
-identificarHora(S, _, _, _, SpecsA, SpecsD):-miembro("00:01",S), append(SpecsA, ["00:01"]
+identificarHora(S, _, _, _, SpecsA, SpecsD):- miembro("00:01",S), append(SpecsA, ["00:01"]);
 miembro("00:00",S), append(SpecsA, ["00:00"], SpecsD); miembro("00:30",S), append(SpecsA, ["00:30"], SpecsD);
 miembro("01:00",S), append(SpecsA, ["01:00"], SpecsD); miembro("01:30",S), append(SpecsA, ["01:30"], SpecsD);
 miembro("02:00",S), append(SpecsA, ["02:00"], SpecsD); miembro("02:30",S), append(SpecsA, ["02:30"], SpecsD);
