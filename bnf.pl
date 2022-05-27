@@ -1,17 +1,18 @@
-run():- dataBase(DB), write(DB), runaux([], 0, DB).
+run():- dataBase(DB), runaux([], 0, DB).
 dataBase(DB):- append([], [[]], D0), append(D0, [[]], D1), append(D1, [[]], D2), append(D2, [[]], DB).
-runaux(C, Emer, DB):- read(X),split_string(X," ","",S), bnf(S,[], DB), append(C, S, Conv),identificarPC(Conv, Emer, DB).
+runaux(C, Emer, DB):- read(X),split_string(X," ","",S), append(C, S, Conv), bnf(S,[], DB, Conv, Emer),identificarPC(Conv, Emer, DB).
 
 runaux(C, Emer, DB):- fraseSiNoEntendio(C, Emer, DB).
 
 
 %bnf
-bnf(S0,_, _):- S0 = ["EXIT"], abort.
-bnf(S0,_, DB):- S0 = ["MuchasGracias"], write("De nada \n"), runaux([], 0, DB).
-bnf(S0,_, DB):- S0 = ["CambioYFuera"], runaux([], 0, DB).
-bnf(S0,_, DB):- S0 = ["Gracias"], write("De nada \n"), runaux([], 0, DB).
-bnf(S0,S, _):- oracion(S0, S).
-bnf(S0,S, DB):- oracion(S0, S1), bnf(S1, S, DB).
+bnf(S0,_, _, _,_):- S0 = ["EXIT"], abort.
+bnf(S0,_, DB, _,_):- S0 = ["MuchasGracias"], write("De nada \n"), runaux([], 0, DB).
+bnf(S0,_, DB, _,_):- S0 = ["CambioYFuera"], runaux([], 0, DB).
+bnf(S0,_, DB,_,_):- S0 = ["Gracias"], write("De nada \n"), runaux([], 0, DB).
+bnf(S0,_, DB, Conv, Emer):- S0 = ["DB"], write("Aqui esta la base de datos: "), write(DB), write("\n"), runaux(Conv, Emer, DB).
+bnf(S0,S, _, _, _):- oracion(S0, S).
+bnf(S0,S, DB, Conv, Emer):- oracion(S0, S1), bnf(S1, S, DB, Conv, Emer).
 
 %Sintagmas de las oraciones
 oracion(S0,S):- sintagma_nominal(S0,S1),sintagma_verbal(S1,S).
@@ -90,8 +91,7 @@ compania(["American-Airlines"|S],S).
 
 %Matricluas y alfabeto aeronautico
 matricula(["Matricula:"|S],S).
-alfabeto_aeronautico(S0,S):- letra_aa(S0,S).
-alfabeto_aeronautico(S0,S):- letra_aa(S0,S1),alfabeto_aeronautico(S1,S).
+alfabeto_aeronautico(S0,S):- letra_aa(S0,S1), letra_aa(S1,S2), letra_aa(S2,S3), letra_aa(S3,S).
 
 letra_aa(["Alfa"|S],S).
 letra_aa(["Bravo"|S],S).
@@ -266,26 +266,26 @@ fraseSiNoEntendio(C, Emer, DB):- random(0, 4, R), nth0(R,
 identificarPC(S, Emer, DB):- identificarSaludo(S, Conv), responderSaludo(P), write(P), runaux(Conv, Emer, DB).
 identificarPC(S, _, DB):- identificarEmergencia(S, Conv), write("Buenas, indique cual es su emergencia \n"), runaux(Conv, 1, DB).
 
-identificarPC(S, Emer, DB):- identificarSolicitud(S, Soli, Emer) ,identificarVuelo(S), identificarAerolinea(S),
-                        identificarMatricula(S), identificarAeronave(S), identificarHora(S, Soli, Emer, DB),
-                        identificarVelocidad(S, Soli, Emer, DB), identificarDistancia(S, Soli, Emer, DB),
-                        identificarDireccion(S, Emer), agendarEspacio(S, Emer, DB).
+identificarPC(S, Emer, DB):- identificarSolicitud(S, Soli, Emer) ,identificarVuelo(S, [], SpecsD0), identificarAerolinea(S, SpecsD0, SpecsD1),
+                        identificarMatricula(S, SpecsD1, SpecsD2), identificarAeronave(S, SpecsD2, SpecsD3), identificarHora(S, Soli, Emer, DB, SpecsD3, SpecsD4),
+                        identificarVelocidad(S, Soli, Emer, DB, SpecsD4, SpecsD5), identificarDistancia(S, Soli, Emer, DB, SpecsD5, SpecsD6),
+                        identificarDireccion(S, Emer, SpecsD6, SpecsD7), agendarEspacio(S, Emer, DB, SpecsD7).
 
 
 
 identificarPC(S, Emer, DB):- not(identificarSolicitud(S, _, Emer)), pedirSolicitud(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarVuelo(S)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarAerolinea(S)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarMatricula(S)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarAeronave(S)), pedirAeronave(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarHora(S, 0, Emer, DB)), pedirHora(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarVelocidad(S, 0, Emer, DB)), pedirVelocidad(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarDistancia(S, 0, Emer, DB)), pedirDistancia(P), write(P), runaux(S, Emer, DB).
-identificarPC(S, Emer, DB):- not(identificarDireccion(S, Emer)), pedirDireccion(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarVuelo(S, [], _)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarAerolinea(S, [],_)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarMatricula(S,[],_)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarAeronave(S,[],_)), pedirAeronave(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarHora(S, 0, Emer, DB,[], _)), pedirHora(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarVelocidad(S, 0, Emer, DB, [], _)), pedirVelocidad(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarDistancia(S, 0, Emer, DB,[],_)), pedirDistancia(P), write(P), runaux(S, Emer, DB).
+identificarPC(S, Emer, DB):- not(identificarDireccion(S, Emer,[],_)), pedirDireccion(P), write(P), runaux(S, Emer, DB).
 
-
-
-
+indexOf(V, [H|T], A, I):- V = H, A = I, !;
+                          ANew is A + 1,indexOf(V, T, ANew, I).
+indexOf(Value, List, Index) :-indexOf(Value, List, 0, Index).
 
 miembro(X,[X|_]).
 miembro(X,[_|Ys]):- miembro(X,Ys).
@@ -317,57 +317,89 @@ pedirSolicitud(P):-random(0, 1, R), nth0(R,
                                            ["Por favor indiqueme en que le puedo ayudar primero, aterrizaje o despegue \n",
                                            "Primero hagame saber si desea aterrizar o despegar \n"], P).
 
-identificarVuelo(S):- miembro("Vuelo:", S).
-identificarAerolinea(S):- miembro("Aerolinea:", S).
-identificarMatricula(S):- miembro("Matricula:", S).
+identificarVuelo(S, SpecsA, SpecsD):- miembro("Vuelo:", S), indexOf("Vuelo:", S, Index), IndexV is Index+1,nth0(IndexV, S, Vuelo), append(SpecsA, [Vuelo], SpecsD).
+identificarAerolinea(S, SpecsA, SpecsD):- miembro("Aerolinea:", S), indexOf("Aerolinea:", S, Index), IndexL is Index+1,nth0(IndexL, S, Linea), append(SpecsA, [Linea], SpecsD).
+identificarMatricula(S, SpecsA, SpecsD):- miembro("Matricula:", S), indexOf("Matricula:", S, Index),
+                                                                                                     IndexM0 is Index+1,nth0(IndexM0, S, M0),
+                                                                                                     IndexM1 is Index+2,nth0(IndexM1, S, M1),
+                                                                                                     IndexM2 is Index+3,nth0(IndexM2, S, M2),
+                                                                                                     IndexM3 is Index+4,nth0(IndexM3, S, M3),
+                                                                                                     append([M0], [M1], M01), append(M01, [M2], M012), append(M012, [M3], Matricula),
+                                                                                                     append(SpecsA, [Matricula], SpecsD).
 pedirIdentificacion(P):-random(0, 1, R), nth0(R,
                                        ["Por favor identifiquese completamente \n",
                                        "Identifiquese con toda la informacion necesaria \n"], P).
 
-identificarAeronave(S):- miembro("Cessna", S); miembro("Beechcraft", S); miembro("Embraer-Phenom", S);
-miembro("Boing-717", S); miembro("Embraer-190", S); miembro("Airbus-A220", S); miembro("Boing-747", S);
-miembro("Airbus-A340", S); miembro("Airbus-A380", S).
+identificarAeronave(S, SpecsA, SpecsD):- miembro("Cessna", S), append(SpecsA, ["Peq"], SpecsD);
+                         miembro("Beechcraft", S), append(SpecsA, ["Peq"], SpecsD);
+                         miembro("Embraer-Phenom", S), append(SpecsA, ["Peq"], SpecsD);
+                         miembro("Boing-717", S), append(SpecsA, ["Med"], SpecsD);
+                         miembro("Embraer-190", S), append(SpecsA, ["Med"], SpecsD);
+                         miembro("Airbus-A220", S), append(SpecsA, ["Med"], SpecsD);
+                         miembro("Boing-747", S), append(SpecsA, ["Gran"], SpecsD);
+                         miembro("Airbus-A340", S), append(SpecsA, ["Gran"], SpecsD);
+                         miembro("Airbus-A380", S), append(SpecsA, ["Gran"], SpecsD).
 pedirAeronave(P):-random(0, 1, R), nth0(R,
                                        ["Me indica el tipo de aeronave \n",
                                        "Que tipo de aeronave es? \n"], P).
 
-identificarHora(_, _, Emer, _):- Emer = 1.
-identificarHora(S, Soli, Emer, DB):- Soli = 2, append(S, ["00:00"], Conv), not(identificarVelocidad(Conv, 0, Emer, DB)), pedirVelocidad(P), write(P), runaux(Conv, Emer, DB).
-identificarHora(S, _, _, _):- miembro("00:00", S); miembro("01:00",S); miembro("01:30",S); miembro("02:00",S);
-miembro("02:30",S); miembro("03:00",S); miembro("03:30",S); miembro("04:00",S); miembro("04:30",S);
-miembro("05:00",S); miembro("05:30",S); miembro("06:00",S); miembro("06:30",S); miembro("07:00",S);
-miembro("07:30",S); miembro("08:00",S); miembro("08:30",S); miembro("09:00",S); miembro("09:30",S);
-miembro("10:00",S); miembro("10:30",S); miembro("11:00",S); miembro("11:30",S); miembro("12:00",S);
-miembro("12:30",S); miembro("13:00",S); miembro("13:30",S); miembro("14:30",S); miembro("14:00",S);
-miembro("15:30",S); miembro("15:00",S); miembro("16:30",S); miembro("16:00",S); miembro("18:30",S);
-miembro("17:00",S); miembro("17:30",S); miembro("18:00",S); miembro("19:30",S); miembro("20:00",S);
-miembro("20:30",S); miembro("21:00",S); miembro("21:30",S); miembro("22:00",S); miembro("22:30",S);
-miembro("23:00",S); miembro("23:30",S); miembro("19:00",S).
+identificarHora(_, _, Emer, _, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0"], SpecsD).
+identificarHora(S, Soli, Emer, DB,_,_):- Soli = 2, append(S, ["00:01"], Conv), not(identificarVelocidad(Conv, 0, Emer, DB, [], _)), pedirVelocidad(P), write(P), runaux(Conv, Emer, DB).
+identificarHora(S, _, _, _, SpecsA, SpecsD):-miembro("00:01",S), append(SpecsA, ["00:01"]
+miembro("00:00",S), append(SpecsA, ["00:00"], SpecsD); miembro("00:30",S), append(SpecsA, ["00:30"], SpecsD);
+miembro("01:00",S), append(SpecsA, ["01:00"], SpecsD); miembro("01:30",S), append(SpecsA, ["01:30"], SpecsD);
+miembro("02:00",S), append(SpecsA, ["02:00"], SpecsD); miembro("02:30",S), append(SpecsA, ["02:30"], SpecsD);
+miembro("03:00",S), append(SpecsA, ["03:00"], SpecsD); miembro("03:30",S), append(SpecsA, ["03:30"], SpecsD);
+miembro("04:00",S), append(SpecsA, ["04:00"], SpecsD); miembro("04:30",S), append(SpecsA, ["04:30"], SpecsD);
+miembro("05:00",S), append(SpecsA, ["05:00"], SpecsD); miembro("05:30",S), append(SpecsA, ["05:30"], SpecsD);
+miembro("06:00",S), append(SpecsA, ["06:00"], SpecsD); miembro("06:30",S), append(SpecsA, ["06:30"], SpecsD);
+miembro("07:00",S), append(SpecsA, ["07:00"], SpecsD); miembro("07:30",S), append(SpecsA, ["07:30"], SpecsD);
+miembro("08:00",S), append(SpecsA, ["08:00"], SpecsD); miembro("08:30",S), append(SpecsA, ["08:30"], SpecsD);
+miembro("09:00",S), append(SpecsA, ["09:00"], SpecsD); miembro("09:30",S), append(SpecsA, ["09:30"], SpecsD);
+miembro("10:00",S), append(SpecsA, ["10:00"], SpecsD); miembro("10:30",S), append(SpecsA, ["10:30"], SpecsD);
+miembro("11:00",S), append(SpecsA, ["11:00"], SpecsD); miembro("11:30",S), append(SpecsA, ["11:30"], SpecsD);
+miembro("12:00",S), append(SpecsA, ["12:00"], SpecsD); miembro("12:30",S), append(SpecsA, ["12:30"], SpecsD);
+miembro("13:00",S), append(SpecsA, ["13:00"], SpecsD); miembro("13:30",S), append(SpecsA, ["13:30"], SpecsD);
+miembro("14:00",S), append(SpecsA, ["14:00"], SpecsD); miembro("14:30",S), append(SpecsA, ["14:30"], SpecsD);
+miembro("15:00",S), append(SpecsA, ["15:00"], SpecsD); miembro("15:30",S), append(SpecsA, ["15:30"], SpecsD);
+miembro("16:00",S), append(SpecsA, ["16:00"], SpecsD); miembro("16:30",S), append(SpecsA, ["16:30"], SpecsD);
+miembro("17:00",S), append(SpecsA, ["17:00"], SpecsD); miembro("17:30",S), append(SpecsA, ["17:30"], SpecsD);
+miembro("18:00",S), append(SpecsA, ["18:00"], SpecsD); miembro("18:30",S), append(SpecsA, ["18:30"], SpecsD);
+miembro("19:00",S), append(SpecsA, ["19:00"], SpecsD); miembro("19:30",S), append(SpecsA, ["19:30"], SpecsD);
+miembro("20:00",S), append(SpecsA, ["20:00"], SpecsD); miembro("20:30",S), append(SpecsA, ["20:30"], SpecsD);
+miembro("21:00",S), append(SpecsA, ["21:00"], SpecsD); miembro("21:30",S), append(SpecsA, ["21:30"], SpecsD);
+miembro("22:00",S), append(SpecsA, ["22:00"], SpecsD); miembro("22:30",S), append(SpecsA, ["22:30"], SpecsD);
+miembro("23:00",S), append(SpecsA, ["23:00"], SpecsD); miembro("23:30",S), append(SpecsA, ["23:30"], SpecsD).
 
 pedirHora(P):-random(0, 1, R), nth0(R,
                                        ["Indique la hora de salida \n",
                                        "A que hora desea despegar? \n"], P).
 
-identificarVelocidad(_, _, Emer, _):- Emer = 1.
-identificarVelocidad(S, Soli, Emer, DB):- Soli = 1, append(S, ["distancia:", "velocidad:"], Conv), not(identificarDireccion(S, Emer)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
-identificarVelocidad(S, _, _, _):- miembro("velocidad:", S).
+identificarVelocidad(_, _, Emer, _, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0km"], SpecsD).
+identificarVelocidad(S, Soli, Emer, DB, _, _):- Soli = 1, append(S, ["distancia:", "0km", "velocidad:", "0km/h"], Conv), not(identificarDireccion(S, Emer, [],_)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
+identificarVelocidad(S, _, _, _, SpecsA, SpecsD):- miembro("velocidad:", S), indexOf("velocidad:", S, Index), IndexV is Index+1,nth0(IndexV, S, Velocidad), append(SpecsA, [Velocidad], SpecsD).
 
 pedirVelocidad(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su velocidad, distancia a la pista y direccion\n",
                                        "Hagame saber sus caracteristicas fisicas de movimiento \n"], P).
 
-identificarDistancia(_, _, Emer, _):- Emer = 1.
-identificarDistancia(S, Soli, Emer, DB):- Soli = 1,append(S, ["distancia:", "velocidad"], Conv), not(identificarDireccion(S, Emer)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
-identificarDistancia(S, _, _, _):- miembro("distancia:", S).
+identificarDistancia(_, _, Emer, _, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0km"], SpecsD).
+identificarDistancia(S, Soli, Emer, DB,_,_):- Soli = 1, append(S, ["distancia:", "0km", "velocidad:", "0km/h"], Conv), not(identificarDireccion(S, Emer, [], _)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
+identificarDistancia(S, _, _, _, SpecsA, SpecsD):- miembro("distancia:", S), indexOf("distancia:", S, Index), IndexD is Index+1,nth0(IndexD, S, Distancia), append(SpecsA, [Distancia], SpecsD).
 
 pedirDistancia(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su velocidad, distancia a la pista y direccion\n",
                                        "Hagame saber sus caracteristicas fisicas de movimiento \n"], P).
 
-identificarDireccion(_, Emer):- Emer = 1.
-identificarDireccion(S, _):- miembro("direccion:", S).
+identificarDireccion(_, Emer, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0"], SpecsD).
+identificarDireccion(S, _, SpecsA, SpecsD):- miembro("direccion:", S), indexOf("direccion:", S, Index), IndexD is Index+1,nth0(IndexD, S, Direccion), append(SpecsA, [Direccion], SpecsD).
 pedirDireccion(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su direccion\n",
                                        "Hagame saber su direccion\n"], P).
 
-agendarEspacio(S, Emer, DB):- write("Su espacio ha sido asignado \n"), runaux(S, Emer, DB).
+agendarEspacio(S, Emer, DB, Specs):- revisarEspacios(Emer, DB, Specs, NewDB), write("Su espacio ha sido asignado \n"), runaux(S, Emer, NewDB).
+
+
+revisarEspacios(Emer, DB, Specs, NewDB):- nth0(0, DB, P1), nth0(1, DB, P21), nth0(2, DB, P22),nth0(3, DB, P3),
+                                          append(P1, Specs, P1D), append(P1D, [P21], P121), append(P121, [P22], P12),
+                                          append(P12, [P3], NewDB).
