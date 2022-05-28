@@ -1,11 +1,19 @@
+%Funcion base para correr al sistema experto MayCEy
 run():- dataBase(DB), runaux([], 0, DB).
-dataBase(DB):- append([], [[]], D0), append(D0, [[]], D1), append(D1, [[]], D2), append(D2, [[]], DB).
-runaux(C, Emer, DB):- read(X),split_string(X," ","",S), append(C, S, Conv), bnf(S,[], DB, Conv, Emer),identificarPC(Conv, Emer, DB).
 
+%Funcion que crea y retorna la base de datos vacia y por lo tanto inicial
+dataBase(DB):- append([], [[]], D0), append(D0, [[]], D1), append(D1, [[]], D2), append(D2, [[]], DB).
+
+%Funcion auxiliar para realizar la corrida del sistema experto
+%Params C, Emer, DB, recibe C que corresponde a la conversacon, Emer que es 1 cuando se indico que exite una emergencia y DB es la base de datos
+runaux(C, Emer, DB):- read(X),split_string(X," ","",S), append(C, S, Conv), bnf(S,[], DB, Conv, Emer),identificarPC(Conv, Emer, DB).
+%Si no se entiende lo dicho exite este hecho para que el bot pueda pedir que se repita lo dicho
 runaux(C, Emer, DB):- fraseSiNoEntendio(C, Emer, DB).
 
 
-%bnf
+%bnf del sistema experto
+%Params S0, S ,DB, Conv, Emer, S0 es la oracion a revisar, S es el caso base que se desea alcansar, DB es la base de datos, Conv es la conversacion total y Emer es 1 cuando existe una emergencia
+%Return: retorna verdader si la oracion ingresada cumple con las reglas establecidas, eso o tambien contiene casos bases que permiten realizar acciones primitivas como salir
 bnf(S0,_, _, _,_):- S0 = ["EXIT"], abort.
 bnf(S0,_, DB, _,_):- S0 = ["MuchasGracias"], write("De nada \n"), runaux([], 0, DB).
 bnf(S0,_, DB, _,_):- S0 = ["CambioYFuera"], runaux([], 0, DB).
@@ -26,8 +34,6 @@ oracion(S0,S):- nombreA(S0, S).
 oracion(S0,S):- hora(S0, S).
 oracion(S0,S):- sintagma_caracteristica(S0, S).
 oracion(S0,S):- emergencia(S0, S).
-
-
 
 %Sintagma nomminal
 sintagma_nominal(S0,S):- determinante(S0,S1),nombreA(S1,S).
@@ -92,7 +98,6 @@ compania(["American-Airlines"|S],S).
 %Matricluas y alfabeto aeronautico
 matricula(["matricula:"|S],S).
 alfabeto_aeronautico(S0,S):- letra_aa(S0,S1), letra_aa(S1,S2), letra_aa(S2,S3), letra_aa(S3,S).
-
 letra_aa(["Alfa"|S],S).
 letra_aa(["Bravo"|S],S).
 letra_aa(["Charlie"|S],S).
@@ -243,26 +248,29 @@ adverbio(["MayCEy"|S],S).
 adverbio(["companero"|S],S).
 adverbio(["torre de control"|S],S).
 
-%Saludos
+%Sintagma de saludo y saludos
 sintagma_saludo(S0,S):- saludo(S0,S).
 sintagma_saludo(S0,S):- saludo(S0,S1),tiempo(S1,S).
-
 saludo(["Hola"|S],S).
 saludo(["Buenos"|S],S).
 saludo(["Buenas"|S],S).
-
 tiempo(["dias"|S],S).
 tiempo(["tardes"|S],S).
 tiempo(["noches"|S],S).
 
 %Elije una frase por si lo escrito por el ususario no se llega a comprender
+%Params C, Emer, DB: C es la conversacion hasta el momento, Emer es 1 si es una emergencia y DB es la base de datos hasta el momento
+%Return: Retorna un mensaje para ahcer saber al usuario que no se entendio y se vuelve a correr runaux para esperar por la respuesta del usuario
 fraseSiNoEntendio(C, Emer, DB):- random(0, 4, R), nth0(R,
                        ["Disculpe, pordria repetir lo que dijo. \n",
                        "No se le pudo comprender, por favor repitase. \n",
                        "Estamos teniendo problemas con la senal de radio, repita lo dicho. \n",
                        "Comuniquese nuevamente, no se le logro entender. \n"], Phrase) ,
                        write(Phrase), runaux(C,Emer, DB).
-
+%Conjunto de hechos que identifica palabras claves, el sistema experto responde y realiza acciones
+%dependiendo de las palabras claves encontradas y no encontrdas
+%Param S, Emer, DB: S es la convesacion acutal, Emer es 1 si se encuentra en emergencia y DB es la base de datos actual
+%Return: Puede retornar una respuesta o comenzar a agendar un espacio para un vuelo
 identificarPC(S, Emer, DB):- identificarSaludo(S, Conv), responderSaludo(P), write(P), runaux(Conv, Emer, DB).
 identificarPC(S, _, DB):- identificarEmergencia(S, Conv), write("Buenas, indique cual es su emergencia \n"), runaux(Conv, 1, DB).
 
@@ -270,8 +278,7 @@ identificarPC(S, Emer, DB):- identificarSolicitud(S, Soli, Emer) ,identificarVue
                         identificarMatricula(S, SpecsD1, SpecsD2), identificarAeronave(S, SpecsD2, SpecsD3), identificarHora(S, Soli, Emer, DB, SpecsD3, SpecsD4),
                         identificarVelocidad(S, Soli, Emer, DB, SpecsD4, SpecsD5), identificarDistancia(S, Soli, Emer, DB, SpecsD5, SpecsD6),
                         identificarDireccion(S, Emer, SpecsD6, SpecsD7), agendarEspacio(Emer, DB, SpecsD7).
-
-
+%Cuando no se encuentra una palabra clave
 identificarPC(S, Emer, DB):- not(identificarSolicitud(S, _, Emer)), pedirSolicitud(P), write(P), runaux(S, Emer, DB).
 identificarPC(S, Emer, DB):- not(identificarVuelo(S, [], _)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
 identificarPC(S, Emer, DB):- not(identificarAerolinea(S, [],_)), pedirIdentificacion(P), write(P), runaux(S, Emer, DB).
@@ -282,48 +289,41 @@ identificarPC(S, Emer, DB):- not(identificarVelocidad(S, 0, Emer, DB, [], _)), p
 identificarPC(S, Emer, DB):- not(identificarDistancia(S, 0, Emer, DB,[],_)), pedirDistancia(P), write(P), runaux(S, Emer, DB).
 identificarPC(S, Emer, DB):- not(identificarDireccion(S, Emer,[],_)), pedirDireccion(P), write(P), runaux(S, Emer, DB).
 
-indexOf(V, [H|T], A, I):- V = H, A = I, !;
-                          ANew is A + 1,indexOf(V, T, ANew, I).
-indexOf(Value, List, Index) :-indexOf(Value, List, 0, Index).
 
-miembro(X,[X|_]).
-miembro(X,[_|Ys]):- miembro(X,Ys).
+%Conjunto de hechos (300-415) para identificar distintas palabras claves, estas reciben parametros similares, por eso se agruparan a continuacion
+%Param S, Conv, Soli, Emer, SpecsA y Specs D, S y Conv son la conversacion hasta el momento, Soli hace referencia a
+%la accion que desea realizar el bvuelo, Emer es 1 si se encuentra en emergencia, SpecsA son las caracteristicas del vuelo antes de evaluar
+%la funcion y SpecsD son las caracteristicas del vuelo despues de evaluar el hecho.
+%Estas funciones retornan valores distintos pero se pueden resumir en que si se encuentra la palabra clave se devuelve verdadero
+%y se almacena el valor que se desea identificar, de lo contrario se devuelve falso.
 
-my_remove_element(_, [], []).
-
-my_remove_element(Y, [Y|Xs], Zs):-
-          my_remove_element(Y, Xs, Zs), !.
-
-my_remove_element(X, [Y|Xs], [Y|Zs]):-
-          my_remove_element(X, Xs, Zs).
-
-my_length([], 0).
-
-my_length([_|Xs], L):-
-          my_length(Xs, L2),
-          L is L2 + 1.
-
-
+%Hechos para identificar palabras claves de saludo
 identificarSaludo(S, Conv):- miembro("Hola", S), my_remove_element("Hola", S, Conv).
 identificarSaludo(S, Conv):- miembro("Buenos", S), my_remove_element("Buenos", S, Conv).
 identificarSaludo(S, Conv):- miembro("Buenas", S), my_remove_element("Buenas", S, Conv).
+%Hecho para responder un saludo
 responderSaludo(P):- random(0, 2, R), nth0(R,
                                             ["Hola. En que lo puedo ayudar? \n",
                                             "Buen dia, en que le puedo servir \n",
                                             "Torre de control reportandose. Que necesita? \n"], P).
 
+%Hechos para identificar palabras claves de emergencia
 identificarEmergencia(S, Conv):- miembro("Mayday-Mayday", S), my_remove_element("Mayday-Mayday", S, Conv).
 
+%Hechos para identificar palabras claves de solicitud
 identificarSolicitud(_, Soli, Emer):- Emer = 1, Soli is 2.
 identificarSolicitud(S, Soli, _):- miembro("despegar", S), Soli is 1.
 identificarSolicitud(S, Soli, _):- miembro("aterrizar", S), Soli is 2.
 
+%Hecho para perdir la accion que desea realizar el vuelo
 pedirSolicitud(P):-random(0, 1, R), nth0(R,
                                            ["Por favor indiqueme en que le puedo ayudar primero, aterrizaje o despegue \n",
                                            "Primero hagame saber si desea aterrizar o despegar \n"], P).
-
+%Hechos para identificar palabras claves de vuelo y conseguir el numero de vuelo
 identificarVuelo(S, SpecsA, SpecsD):- miembro("vuelo:", S), indexOf("vuelo:", S, Index), IndexV is Index+1,nth0(IndexV, S, Vuelo), append(SpecsA, [Vuelo], SpecsD).
+%Hechos para identificar palabras claves de aerolinea y conseguir el nombre de la aerolinea
 identificarAerolinea(S, SpecsA, SpecsD):- miembro("aerolinea:", S), indexOf("aerolinea:", S, Index), IndexL is Index+1,nth0(IndexL, S, Linea), append(SpecsA, [Linea], SpecsD).
+%Hechos para identificar palabras claves de matricula y conseguir la matricula
 identificarMatricula(S, SpecsA, SpecsD):- miembro("matricula:", S), indexOf("matricula:", S, Index),
                                                                                                      IndexM0 is Index+1,nth0(IndexM0, S, M0),
                                                                                                      IndexM1 is Index+2,nth0(IndexM1, S, M1),
@@ -331,10 +331,11 @@ identificarMatricula(S, SpecsA, SpecsD):- miembro("matricula:", S), indexOf("mat
                                                                                                      IndexM3 is Index+4,nth0(IndexM3, S, M3),
                                                                                                      append([M0], [M1], M01), append(M01, [M2], M012), append(M012, [M3], Matricula),
                                                                                                      append(SpecsA, [Matricula], SpecsD).
+%Hecho para perdir la identificacion de un vuelo
 pedirIdentificacion(P):-random(0, 1, R), nth0(R,
                                        ["Por favor identifiquese completamente \n",
                                        "Identifiquese con toda la informacion necesaria \n"], P).
-
+%Hechos para identificar palabras clave de aeronaves y guardar el tamaño de la aeronave
 identificarAeronave(S, SpecsA, SpecsD):- miembro("Cessna", S), append(SpecsA, ["Peq"], SpecsD);
                          miembro("Beechcraft", S), append(SpecsA, ["Peq"], SpecsD);
                          miembro("Embraer-Phenom", S), append(SpecsA, ["Peq"], SpecsD);
@@ -344,10 +345,13 @@ identificarAeronave(S, SpecsA, SpecsD):- miembro("Cessna", S), append(SpecsA, ["
                          miembro("Boing-747", S), append(SpecsA, ["Gran"], SpecsD);
                          miembro("Airbus-A340", S), append(SpecsA, ["Gran"], SpecsD);
                          miembro("Airbus-A380", S), append(SpecsA, ["Gran"], SpecsD).
+%Hecho para perdir el tipo de aeronave
 pedirAeronave(P):-random(0, 1, R), nth0(R,
                                        ["Me indica el tipo de aeronave \n",
                                        "Que tipo de aeronave es? \n"], P).
 
+%Hechos para identificar palabras clave de hora si se encuentra en solicitud de despegue, si se encuentra en emergencia o aterrizaje se omite
+%Almacena la hora de despegue deseada para revisar horarios despues en la base de datos
 identificarHora(_, _, Emer, _, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["00:01"], SpecsD).
 identificarHora(S, Soli, Emer, DB,_,_):- Soli = 2, append(S, ["00:01"], Conv), not(identificarVelocidad(Conv, 0, Emer, DB, [], _)), pedirVelocidad(P), write(P), runaux(Conv, Emer, DB).
 identificarHora(S, _, _, _, SpecsA, SpecsD):- miembro("00:01",S), append(SpecsA, ["00:01"], SpecsD);
@@ -376,38 +380,52 @@ miembro("21:00",S), append(SpecsA, ["21:00"], SpecsD); miembro("21:30",S), appen
 miembro("22:00",S), append(SpecsA, ["22:00"], SpecsD); miembro("22:30",S), append(SpecsA, ["22:30"], SpecsD);
 miembro("23:00",S), append(SpecsA, ["23:00"], SpecsD); miembro("23:30",S), append(SpecsA, ["23:30"], SpecsD).
 
+%Hecho para perdir la hora de un vuelo
 pedirHora(P):-random(0, 1, R), nth0(R,
                                        ["Indique la hora de salida \n",
                                        "A que hora desea despegar? \n"], P).
 
+%Hechos para identificar palabras clave de velocidad y se guarda la velocidad de la nave,
+%esta se omite si es una emergencia o un despegue
 identificarVelocidad(_, _, Emer, _, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0km/h"], SpecsD).
 identificarVelocidad(S, Soli, Emer, DB, _, _):- Soli = 1, append(S, ["distancia:", "0km", "velocidad:", "0km/h"], Conv), not(identificarDireccion(S, Emer, [],_)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
 identificarVelocidad(S, _, _, _, SpecsA, SpecsD):- miembro("velocidad:", S), indexOf("velocidad:", S, Index), IndexV is Index+1,nth0(IndexV, S, Velocidad), append(SpecsA, [Velocidad], SpecsD).
 
+%Hecho para perdir la velocidad de un vuelo
 pedirVelocidad(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su velocidad, distancia a la pista y direccion\n",
                                        "Hagame saber sus caracteristicas fisicas de movimiento \n"], P).
 
+%Hechos para identificar palabras clave de distancia y se guarda la distancia de la nave,
+%esta se omite si es una emergencia o un despegue
 identificarDistancia(_, _, Emer, _, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0km"], SpecsD).
 identificarDistancia(S, Soli, Emer, DB,_,_):- Soli = 1, append(S, ["distancia:", "0km", "velocidad:", "0km/h"], Conv), not(identificarDireccion(S, Emer, [], _)), pedirDireccion(P), write(P), runaux(Conv, Emer, DB).
 identificarDistancia(S, _, _, _, SpecsA, SpecsD):- miembro("distancia:", S), indexOf("distancia:", S, Index), IndexD is Index+1,nth0(IndexD, S, Distancia), append(SpecsA, [Distancia], SpecsD).
 
+%Hecho para perdir la distancia de la pista de un vuelo
 pedirDistancia(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su velocidad, distancia a la pista y direccion\n",
                                        "Hagame saber sus caracteristicas fisicas de movimiento \n"], P).
-
+%Hechos para identificar palabras clave de direccion y se guarda la direccion de la nave,
+%esta se omite si es una emergencia
 identificarDireccion(_, Emer, SpecsA, SpecsD):- Emer = 1, append(SpecsA, ["0"], SpecsD).
 identificarDireccion(S, _, SpecsA, SpecsD):- miembro("direccion:", S), indexOf("direccion:", S, Index), IndexD is Index+1,nth0(IndexD, S, Direccion), append(SpecsA, [Direccion], SpecsD).
 pedirDireccion(P):-random(0, 1, R), nth0(R,
                                        ["Indiqueme su direccion\n",
                                        "Hagame saber su direccion\n"], P).
 
+%Funcion que se encarga de agendar espacios de acuerdo a la informacion alamacenada en la base de datos y responder
+%al usuario correspondientemente con la agendacion
+%Return: retorna el mensaje de respuesta y vuelve a llamar a runaux para inicar otra conversacion
 agendarEspacio(Emer, DB, Specs):- revisarEspacios(DB, Specs, NewDB, Espacio, false),nth0(0, Espacio, Pista), nth0(1, Espacio, Hora),
 respuestaAlGuardarEspacio(Pista, Hora, Specs, Emer), runaux([], 0, NewDB).
 
-respuestaAlGuardarEspacio(Pista, Hora, _, Emer):- Emer = 1, write("Por favor mantenga la calma, se estan alistando la brigada de emergencia para asitir su vuelo, a usted se le asigno la "),
+%Hechos que se encargan de elegir una respuesta dependiendo de la situacion en la que se encuentre el vuelo
+%Param Pista, Hora, Specs, Emer: Pista es la pista asignada, Hora es la hora asignada, Specs son las caracteristicas del vuelo
+%y Emer es 1 si se encuentra en una emergencia
+%Return: retorna el mensaje de respuesta
+respuestaAlGuardarEspacio(Pista, _, _, Emer):- Emer = 1, write("Por favor mantenga la calma, se estan alistando la brigada de emergencia para asitir su vuelo, a usted se le asigno la "),
 write(Pista), write("\n").
-
 respuestaAlGuardarEspacio(Pista, Hora, Specs, _):- nth0(5, Specs, Velocidad), Velocidad = "0km/h",
 write("A usted se le ha sido asignado a la "), write(Pista),write(" a las "), write(Hora), write("\n").
 respuestaAlGuardarEspacio(Pista, Hora, Specs, _):- nth0(5, Specs, Velocidad), Velocidad = "200km/h",
@@ -419,10 +437,18 @@ write("A usted se le ha sido asignado a la "), write(Pista),write(" a las "), wr
 respuestaAlGuardarEspacio(Pista, Hora, _, _):- write("Por favor disminuya su velocidad a 300km/h como minimo,
 a usted se le asigno la "), write(Pista),write(" a las "), write(Hora), write("\n").
 
+%Hechos que se encargan de revisar espacios validos en los cuales el vuelo puede ser asignado
+%Param DB, Specs, NewDB, Espacio, NoVacio: Specs son las caracteristicas del vuelo, DB es la base de datos, NewDB es la base de
+%datos actualizada con el nuevo vuelo agendado, Espacio es una lista que contiene la pista y hora asignada y NoVacio se vuelve
+%verdadero cuando no se encuentran pistas vacias
+%Return: retorna el Espacio asignado al vuelo
 revisarEspacios(DB, Specs, NewDB, Espacio, NoVacio):- nth0(3, Specs, Nave), Nave = "Peq", revisarEspaciosaux(0, DB, Specs, NewDB, Espacio, NoVacio).
 revisarEspacios(DB, Specs, NewDB, Espacio, NoVacio):- nth0(3, Specs, Nave), Nave = "Med", revisarEspaciosaux(1, DB, Specs, NewDB, Espacio, NoVacio).
 revisarEspacios(DB, Specs, NewDB, Espacio, NoVacio):- nth0(3, Specs, Nave), Nave = "Gran", revisarEspaciosaux(3, DB, Specs, NewDB, Espacio, NoVacio).
 
+%Conjunto de hechos auxiliares (452-575) para elegir el espacio valido para un vuelo en especifico
+%Param Index (unico distinto a la no auxiliar): Index hace referencia al indice en la base de datos de la pista  a utlizar dependiendo del tamaño de la aeronave
+%Return: retorna el Espacio asignado al vuelo
 revisarEspaciosaux(Index, DB, Specs, NewDB, Espacio, NoVacio):- NoVacio,Index = 0, nth0(Index, DB, PisAsig), crearListaHoras(PisAsig, LisHoras),
                                                                       nth0(4, Specs, Hora), miembro(Hora, LisHoras), my_length(LisHoras, L), Largo is L-1,
                                                                       nth0(Largo, LisHoras, UltHora),
@@ -549,10 +575,11 @@ revisarEspaciosaux(Index, DB, Specs, NewDB, Espacio, _):- Index < 3 ,Index1 is I
 revisarEspaciosaux(_, DB, Specs, NewDB, Espacio, _):- revisarEspacios(DB, Specs, NewDB, Espacio, true).
 
 
-%[vuelo, aerolinea, matricula, aeronave, hora, velocidad, direccion]
 
-
-
+%Funciones para anadir vuelos a la base de datos en su correspondiente pista
+%Param: DB, Specs: Specs son las caracteristicas del vuelo, DB es la base de datos, NewDB es la base de
+%datos actualizada con el nuevo vuelo agendado
+%Return: Retorna la base de datos actualizada con el vuelo analizado
 anadirP1(DB, Specs, NewDB):- nth0(0, DB, P1), nth0(1, DB, P21), nth0(2, DB, P22),nth0(3, DB, P3),
            append(P1, [Specs], P1D), append([], [P1D], D0), append(D0, [P21], D1),
            append(D1, [P22], D2), append(D2, [P3], NewDB).
@@ -569,16 +596,18 @@ anadirP3(DB, Specs, NewDB):- nth0(0, DB, P1), nth0(1, DB, P21), nth0(2, DB, P22)
            append(P3, [Specs], P3D), append([], [P1], D0), append(D0, [P21], D1),
            append(D1, [P22], D2), append(D2, [P3D], NewDB).
 
-
+%Funcion para crear la lista de Horas apartir de la base de datos
+%Param PistAsig, LisHorasAux, LisHoras: PistAsig pista en la que se debe de buscar las horas, LisHorasAux, variable temporal
+%que guarada la lista de horas y LisHoras es la lista de horas final
+%Return: returna una lista de horas en base a la base de datos y pista
 crearListaHoras(PistAsig, LisHorasAux, LisHoras):-PistAsig = [], LisHorasAux = LisHoras.
 crearListaHoras([H|T], LisHorasAux ,LisHoras):- nth0(4, H, Hora),append(LisHorasAux, [Hora], LisHorasAuxNew),
 crearListaHoras(T, LisHorasAuxNew, LisHoras).
 crearListaHoras(PisAsig, LisHoras):- crearListaHoras(PisAsig, [] ,LisHoras).
 
-replace([_|T], 0, X, [X|T]).
-replace([H|T], I, X, [H|R]):- I > -1, NI is I-1, replace(T, NI, X, R), !.
-replace(L, _, _, L).
-
+%Hechos para cambiar horas de acuerdo con la hora dada
+%Param UltHora, HoraCambiada: Ultima hora en la base de datos de una pista y HoraCambiada es la hroa despues del cambio
+%Return: Hora actualizada
 cambiarHora(UltHora, HoraCambiada):- UltHora = "00:00", append([], ["00:30"], HoraCambiada).
 cambiarHora(UltHora, HoraCambiada):- UltHora = "00:30", append([], ["01:00"], HoraCambiada).
 cambiarHora(UltHora, HoraCambiada):- UltHora = "01:00", append([], ["01:30"], HoraCambiada).
@@ -627,3 +656,25 @@ cambiarHora(UltHora, HoraCambiada):- UltHora = "22:00", append([], ["22:30"], Ho
 cambiarHora(UltHora, HoraCambiada):- UltHora = "22:30", append([], ["23:00"], HoraCambiada).
 cambiarHora(UltHora, HoraCambiada):- UltHora = "23:00", append([], ["23:30"], HoraCambiada).
 cambiarHora(UltHora, HoraCambiada):- UltHora = "23:30", append([], ["00:00"], HoraCambiada).
+
+%Funciones miscelaneas
+indexOf(V, [H|T], A, I):- V = H, A = I, !;
+                          ANew is A + 1,indexOf(V, T, ANew, I).
+indexOf(Value, List, Index) :-indexOf(Value, List, 0, Index).
+miembro(X,[X|_]).
+miembro(X,[_|Ys]):- miembro(X,Ys).
+my_remove_element(_, [], []).
+
+my_remove_element(Y, [Y|Xs], Zs):-
+          my_remove_element(Y, Xs, Zs), !.
+
+my_remove_element(X, [Y|Xs], [Y|Zs]):-
+          my_remove_element(X, Xs, Zs).
+my_length([], 0).
+
+my_length([_|Xs], L):-
+          my_length(Xs, L2),
+          L is L2 + 1.
+replace([_|T], 0, X, [X|T]).
+replace([H|T], I, X, [H|R]):- I > -1, NI is I-1, replace(T, NI, X, R), !.
+replace(L, _, _, L).
